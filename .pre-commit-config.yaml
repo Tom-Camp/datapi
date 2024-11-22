@@ -37,4 +37,5 @@ repos:
       args: ["-f", "requirements.txt", "--without-hashes", "--with", "dev", "-o", "requirements.txt"]
       language: system
       pass_filenames: false
-      files: ^(pyproject.toml|poetry.lock)$
+      types: [file, python]
+      files: ^(pyproject\.toml|poetry\.lock)$
