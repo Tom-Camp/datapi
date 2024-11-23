@@ -9,7 +9,8 @@ python = "^3.10"
 fastapi = "^0.115.5"
 uvicorn = {extras = ["standard"], version = "^0.32.1"}
 pydantic = "^2.10.1"
-aiohttp = "^3.11.7"
+python-dotenv = "^1.0.1"
+sqlmodel = "^0.0.22"
 
 [tool.poetry.dev-dependencies]
 

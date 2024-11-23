@@ -7,7 +7,6 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
-        exclude: ^app/library/templates/opencontrol/
   - repo: https://github.com/pycqa/isort
     rev: 5.13.2
     hooks:

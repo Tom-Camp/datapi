@@ -1,55 +1,63 @@
-import os
+from contextlib import asynccontextmanager
+from typing import List
 
-import plyvel
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from fastapi import Depends, FastAPI, HTTPException
+from sqlmodel import Session, SQLModel, select
 
-app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:8080"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-DB_PATH = os.getenv("DB_PATH", "/app/db")
-db = plyvel.DB(DB_PATH, create_if_missing=True)
+from app.database import engine, get_db
+from app.models import Item, ItemCreate, ItemResponse
 
 
-class Item(BaseModel):
-    key: str
-    value: str
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("Creating database tables...")
+    SQLModel.metadata.create_all(engine)
+    yield
+    print("Shutting down...")
 
 
-@app.post("/items/")
-async def create_item(item: Item):
-    try:
-        db.put(item.key.encode(), item.value.encode())
-        return {"message": "Item created successfully"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+app = FastAPI(lifespan=lifespan)
 
 
-@app.get("/items/{key}")
-async def read_item(key: str):
-    try:
-        value = db.get(key.encode())
-        if value is None:
-            raise HTTPException(status_code=404, detail="Item not found")
-        return {"key": key, "value": value.decode()}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+@app.post("/items/", response_model=ItemResponse)
+def create_item(*, db: Session = Depends(get_db), item: ItemCreate):
+    with db as session:
+        db_item = Item.model_validate(item)
+        session.add(db_item)
+        session.commit()
+        session.refresh(db_item)
+        return db_item
 
 
-@app.get("/items/")
-async def list_items():
-    try:
-        items = []
-        for key, value in db.iterator():
-            items.append({"key": key.decode(), "value": value.decode()})
+@app.get("/items/", response_model=List[ItemResponse])
+def get_items(*, db: Session = Depends(get_db), skip: int = 0, limit: int = 100):
+    with db as session:
+        statement = select(Item).offset(skip).limit(limit)
+        items = session.exec(statement).all()
         return items
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/items/{item_id}", response_model=ItemResponse)
+def get_item(*, db: Session = Depends(get_db), item_id: int):
+    with db as session:
+        item = session.get(Item, item_id)
+        if not item:
+            raise HTTPException(status_code=404, detail="Item not found")
+        return item
+
+
+@app.delete("/items/{item_id}")
+def delete_item(*, db: Session = Depends(get_db), item_id: int):
+    with db as session:
+        item = session.get(Item, item_id)
+        if not item:
+            raise HTTPException(status_code=404, detail="Sensor not found")
+
+        session.delete(item)
+        session.commit()
+        return {"ok": True}
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    return {"status": "error", "message": str(exc), "type": type(exc).__name__}
