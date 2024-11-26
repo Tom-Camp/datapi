@@ -21,6 +21,5 @@ class ItemCreate(ItemBase):
     pass
 
 
-class ItemResponse(ItemBase):
-    id: int
-    created_at: datetime
+class ItemResponse(SQLModel):
+    data: str
