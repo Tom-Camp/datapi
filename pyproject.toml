@@ -1,8 +1,13 @@
 [tool.poetry]
 name = "datapi"
+packages = [
+    { include = "app" }
+]
 version = "0.1.0"
-description = ""
+description = "Data API server for Tom.Camp"
 authors = ["Tom Camp <tomcamp@protonmail.ch>"]
+readme = "README.md"
+repository = "https://github.com/Tom-Camp/datapi"
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -11,7 +16,6 @@ uvicorn = {extras = ["standard"], version = "^0.32.1"}
 pydantic = "^2.10.1"
 python-dotenv = "^1.0.1"
 sqlmodel = "^0.0.22"
-loguru = "^0.7.2"
 
 [tool.poetry.dev-dependencies]
 
