@@ -1,12 +1,17 @@
+import json
 from contextlib import asynccontextmanager
 from typing import List
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlmodel import Session, SQLModel, select
 
 from app.database import engine, get_db
 from app.models import Item, ItemCreate, ItemResponse
+
+with open("tokens.json", "r") as fp:
+    tokens = json.load(fp)
 
 
 @asynccontextmanager
@@ -25,6 +30,20 @@ origins = [
     "http://localhost:5173",
 ]
 
+AUTHORIZED_TOKENS = tokens
+security = HTTPBearer()
+
+
+def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    token = credentials.credentials
+    if token not in AUTHORIZED_TOKENS.values():
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or unauthorized token",
+        )
+    return token
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -35,7 +54,12 @@ app.add_middleware(
 
 
 @app.post("/items/", response_model=ItemResponse)
-def create_item(*, db: Session = Depends(get_db), item: ItemCreate):
+def create_item(
+    *,
+    db: Session = Depends(get_db),
+    item: ItemCreate,
+    token: str = Depends(verify_token)
+):
     with db as session:
         db_item = Item.model_validate(item)
         session.add(db_item)
