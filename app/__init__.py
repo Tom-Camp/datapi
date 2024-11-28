@@ -1,6 +1,7 @@
 import json
 import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import List
 
 from fastapi import Depends, FastAPI, HTTPException, status
@@ -11,7 +12,10 @@ from sqlmodel import Session, SQLModel, select
 from app.database import engine, get_db
 from app.models import Item, ItemCreate, ItemResponse
 
-with open("tokens.json", "r") as fp:
+APP_DIR = Path(__file__).parent
+ROOT_DIR = APP_DIR.parent
+tokens_path = ROOT_DIR / "tokens.json"
+with open(tokens_path, "r") as fp:
     tokens = json.load(fp)
 
 
