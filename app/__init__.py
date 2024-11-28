@@ -1,4 +1,5 @@
 import json
+import os
 from contextlib import asynccontextmanager
 from typing import List
 
@@ -24,11 +25,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-origins = [
-    "http://localhost",
-    "http://localhost:8080",
-    "http://localhost:5173",
-]
+origins = os.getenv("CORS_ORIGINS", "").split(",")
 
 AUTHORIZED_TOKENS = tokens
 security = HTTPBearer()
@@ -46,7 +43,7 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://kiosk.tom.camp"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
