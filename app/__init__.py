@@ -46,7 +46,7 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["https://kiosk.tom.camp"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
