@@ -76,6 +76,35 @@ def get_items(*, db: Session = Depends(get_db), skip: int = 0, limit: int = 100)
         return items
 
 
+@app.get("/items/latest/", response_model=List[ItemResponse])
+def get_latest(*, db: Session = Depends(get_db)):
+    with db as session:
+        subquery = (
+            select(Item.key, Item.created_at)
+            .group_by(Item.key)
+            .order_by(Item.key, Item.created_at.desc())  # type: ignore[attr-defined]
+            .distinct(Item.key)
+            .subquery()
+        )
+        statement = select(Item).join(
+            subquery,
+            onclause=(Item.key == subquery.c.key)
+            & (Item.created_at == subquery.c.created_at),
+        )
+        items = session.exec(statement).all()
+        return items
+
+
+@app.get("/items/{key}", response_model=List[ItemResponse])
+def get_items_by_key(
+    *, db: Session = Depends(get_db), skip: int = 0, limit: int = 100, key: str
+):
+    with db as session:
+        statement = select(Item).where(Item.key == key).offset(skip).limit(limit)
+        items = session.exec(statement).all()
+        return items
+
+
 @app.get("/items/{item_id}", response_model=ItemResponse)
 def get_item(*, db: Session = Depends(get_db), item_id: int):
     with db as session:
@@ -86,7 +115,9 @@ def get_item(*, db: Session = Depends(get_db), item_id: int):
 
 
 @app.delete("/items/{item_id}")
-def delete_item(*, db: Session = Depends(get_db), item_id: int):
+def delete_item(
+    *, db: Session = Depends(get_db), item_id: int, token: str = Depends(verify_token)
+):
     with db as session:
         item = session.get(Item, item_id)
         if not item:

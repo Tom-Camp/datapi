@@ -1,13 +1,14 @@
 from datetime import datetime
-from typing import Optional
+from typing import Any, Dict, Optional
 from zoneinfo import ZoneInfo
 
+from sqlalchemy.types import JSON
 from sqlmodel import Field, SQLModel
 
 
 class ItemBase(SQLModel):
     key: str
-    data: str
+    data: Dict[str, Any] = Field(sa_type=JSON, default={})
 
 
 class Item(ItemBase, table=True):  # type: ignore
@@ -21,5 +22,7 @@ class ItemCreate(ItemBase):
     pass
 
 
-class ItemResponse(SQLModel):
-    data: str
+class ItemResponse(ItemBase):
+    id: Optional[int]
+    key: str
+    data: Dict
