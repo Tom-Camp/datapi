@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import List
 
+from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -12,6 +13,7 @@ from sqlmodel import Session, SQLModel, select
 from app.database import engine, get_db
 from app.models import Item, ItemCreate, ItemResponse
 
+load_dotenv()
 APP_DIR = Path(__file__).parent
 ROOT_DIR = APP_DIR.parent
 tokens_path = ROOT_DIR / "tokens.json"
@@ -77,22 +79,15 @@ def get_items(*, db: Session = Depends(get_db), skip: int = 0, limit: int = 100)
         return items
 
 
-@app.get("/items/latest/", response_model=List[ItemResponse])
-def get_latest(*, db: Session = Depends(get_db)):
+@app.get("/items/latest/{key}/", response_model=ItemResponse)
+def get_latest(*, key: str, db: Session = Depends(get_db)):
     with db as session:
-        subquery = (
-            select(Item.key, Item.created_at)
-            .group_by(Item.key)
-            .order_by(Item.key, Item.created_at.desc())  # type: ignore[attr-defined]
-            .distinct(Item.key)
-            .subquery()
+        statement = (
+            select(Item)
+            .where(Item.key == key)
+            .order_by(Item.created_at.desc())  # type: ignore[attr-defined]
         )
-        statement = select(Item).join(
-            subquery,
-            onclause=(Item.key == subquery.c.key)
-            & (Item.created_at == subquery.c.created_at),
-        )
-        items = session.exec(statement).all()
+        items = session.exec(statement).first()
         return items
 
 
