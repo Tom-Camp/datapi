@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlmodel import Session, SQLModel, func, select
+from sqlmodel import Session, SQLModel, select
 
 from app.database import engine, get_db
 from app.models import Item, ItemCreate, ItemResponse
@@ -72,7 +72,7 @@ def create_item(
 
 
 @app.get("/items/", response_model=List[ItemResponse])
-def get_items(*, db: Session = Depends(get_db), skip: int = 0, limit: int = 100):
+def get_items(*, db: Session = Depends(get_db), skip: int = 0, limit: int = 20):
     with db as session:
         statement = select(Item).offset(skip).limit(limit)
         items = session.exec(statement).all()
@@ -91,16 +91,17 @@ def get_latest(*, key: str, db: Session = Depends(get_db)):
         return items
 
 
-@app.get("/items/{key}", response_model=List[ItemResponse])
-def get_items_by_key(
-    *, db: Session = Depends(get_db), skip: int = 0, limit: int = 10, key: str
-):
+@app.get("/items/type/{key}", response_model=List[ItemResponse])
+def get_items_by_key(*, db: Session = Depends(get_db), limit: int = 10, key: str):
     with db as session:
-        statement = select(func.count()).select_from(Item).where(Item.key == key)
-        count = session.exec(statement).one()
-        offset = count - limit if count < limit else limit
-        statement = select(Item).where(Item.key == key).offset(offset).limit(limit)
+        statement = (
+            select(Item)
+            .where(Item.key == key)
+            .order_by(Item.id.desc())  # type: ignore[union-attr]
+            .limit(limit)
+        )
         items = session.exec(statement).all()
+        items.reverse()
         return items
 
 
